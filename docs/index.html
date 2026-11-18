@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Caderno de Compras</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Layout: resumo no topo, lista de cards de itens, detalhe do item em painel com gráfico de histórico e ofertas por loja. */
+:root{
+  --bg:#f3f6f4; --surface:#ffffff; --surface-2:#eaf0ed; --ink:#15201b; --muted:#5a6a63; --line:#d8e2dd;
+  --accent:#0d8660; --accent-ink:#ffffff; --accent-soft:#d6efe4;
+  --warn:#9a6412; --warn-soft:#f8ead2; --info:#2860a8; --info-soft:#dde8f7;
+  --down:#0d8660; --up:#b8402f; --up-soft:#f8e1dc;
+  --s1:#0d8660; --s2:#2860a8; --s3:#c06a12; --s4:#8a3fb0; --s5:#b8402f;
+  --font-display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
+  --font-body:"Figtree","Segoe UI",system-ui,-apple-system,sans-serif;
+  --radius:16px; color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0f1513; --surface:#172019; --surface-2:#1e2924; --ink:#e7efea; --muted:#94a59c; --line:#28352f;
+    --accent:#45c493; --accent-ink:#052117; --accent-soft:#183a2d;
+    --warn:#e2b45c; --warn-soft:#3a2f1a; --info:#86b5ea; --info-soft:#1c2c40;
+    --down:#45c493; --up:#f08b7a; --up-soft:#3d221d;
+    --s1:#45c493; --s2:#86b5ea; --s3:#e8a35a; --s4:#c597e0; --s5:#f08b7a;
+    color-scheme:dark;
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:16px;line-height:1.45;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+h1,h2,h3{font-family:var(--font-display);text-wrap:balance;margin:0;letter-spacing:-.01em}
+.num{font-variant-numeric:tabular-nums}
+[hidden]{display:none!important}
+.wrap{max-width:980px;margin:0 auto;padding:20px 16px 64px;display:flex;flex-direction:column;gap:20px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px}
+.logo{width:36px;height:36px;border-radius:10px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center}
+.brand h1{font-size:1.3rem}
+.top-right{display:flex;align-items:center;gap:10px}
+.sync{font-size:.8rem;color:var(--muted);display:flex;align-items:center;gap:6px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.sync.ok .dot{background:var(--accent)} .sync.warn .dot{background:var(--warn)}
+.banner{background:var(--warn-soft);color:var(--warn);border-radius:12px;padding:10px 14px;font-size:.9rem}
+.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;display:flex;flex-direction:column;gap:2px}
+.tile .lbl{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.tile .val{font-size:1.35rem;font-weight:700}
+.tile .sub{font-size:.8rem;color:var(--muted)}
+@media (max-width:560px){.summary{grid-template-columns:1fr 1fr}.summary .tile:first-child{grid-column:1/-1}}
+.bar{display:flex;flex-direction:column;gap:12px}
+.bar-head{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.bar-head h2{font-size:1.8rem}
+.filters{display:flex;gap:8px;flex-wrap:wrap}
+.filters select,.filters input{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:9px 12px;min-height:42px}
+.filters input{flex:1 1 180px}
+.btn{border:0;border-radius:12px;padding:10px 16px;min-height:42px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--surface-2);color:var(--ink);text-decoration:none}
+.btn:hover{filter:brightness(.97)}
+.btn:disabled{opacity:.6;cursor:default}
+.btn.primary{background:var(--accent);color:var(--accent-ink)}
+.btn.ghost{background:transparent;border:1px solid var(--line)}
+.btn.danger{background:transparent;color:var(--up);border:1px solid var(--line)}
+.btn.sm{min-height:34px;padding:6px 12px;font-size:.88rem;border-radius:10px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:18px;display:flex;flex-direction:column;gap:14px;cursor:pointer;text-align:left;width:100%;transition:border-color .15s}
+.card:hover{border-color:var(--accent)}
+.card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.card-head h3{font-size:1.12rem;line-height:1.25}
+.card-meta{font-size:.82rem;color:var(--muted);margin-top:2px}
+.card hr{border:0;border-top:1px dashed var(--line);margin:0;width:100%}
+.card-foot{display:flex;justify-content:space-between;align-items:flex-end;gap:10px}
+.price-lbl{font-size:.7rem;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.price{font-size:1.45rem;font-weight:700}
+.price-store{font-size:.82rem;color:var(--muted)}
+.offers-link{color:var(--muted);font-size:.92rem;white-space:nowrap;text-align:right}
+.offers-link .warn-txt{display:block;color:var(--warn);font-size:.78rem}
+.card-trend{display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:24px}
+.spark{width:96px;height:28px}
+.card.bought{opacity:.72}
+.pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 10px;font-size:.8rem;font-weight:600;white-space:nowrap}
+.pill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.st-pesquisando{background:var(--warn-soft);color:var(--warn)}
+.st-decidido{background:var(--info-soft);color:var(--info)}
+.st-comprado{background:var(--accent-soft);color:var(--accent)}
+.trend{font-size:.8rem;font-weight:600;border-radius:8px;padding:2px 8px}
+.trend.down{color:var(--down);background:var(--accent-soft)}
+.trend.up{color:var(--up);background:var(--up-soft)}
+.trend.flat{color:var(--muted);background:var(--surface-2)}
+.empty{background:var(--surface);border:1px dashed var(--line);border-radius:var(--radius);padding:32px 20px;text-align:center;color:var(--muted)}
+dialog{border:0;padding:0;background:var(--surface);color:var(--ink);border-radius:20px;width:min(720px,calc(100% - 24px));max-height:calc(100% - 24px)}
+dialog::backdrop{background:rgba(5,12,9,.55)}
+dialog.small{width:min(460px,calc(100% - 24px))}
+@media (max-width:560px){dialog.sheet{width:100%;max-width:100%;height:100%;max-height:100%;border-radius:0;margin:0}}
+.dlg{display:flex;flex-direction:column;gap:18px;padding:20px}
+.dlg-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.dlg-top h2{font-size:1.4rem}
+.x{background:var(--surface-2);border:0;border-radius:10px;min-width:38px;height:38px;cursor:pointer;font-size:1.1rem}
+.seg{display:flex;background:var(--surface-2);border-radius:12px;padding:4px;gap:4px}
+.seg button{flex:1;border:0;background:transparent;border-radius:9px;padding:8px;font-weight:600;cursor:pointer;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.meta-line{color:var(--muted);font-size:.92rem}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+@media (max-width:560px){.stats{grid-template-columns:1fr 1fr}}
+.stat{background:var(--surface-2);border-radius:12px;padding:10px 12px}
+.stat .lbl{font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+.stat .val{font-weight:700;font-size:1.05rem}
+.chart-box{position:relative;height:240px;background:var(--surface-2);border-radius:14px;padding:10px}
+.section-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.section-head h3{font-size:1.1rem}
+.offer{border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.offer.best{border-color:var(--accent);box-shadow:inset 3px 0 0 var(--accent)}
+.offer.paused{opacity:.65}
+.offer-row{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.offer-store{font-weight:700;display:flex;align-items:center;gap:8px}
+.offer-title{font-size:.84rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.swatch{width:10px;height:10px;border-radius:3px;display:inline-block}
+.offer-price{font-weight:700;font-size:1.1rem}
+.offer-sub{font-size:.84rem;color:var(--muted)}
+.offer-err{font-size:.84rem;color:var(--warn);background:var(--warn-soft);border-radius:8px;padding:6px 10px}
+.offer-actions{display:flex;gap:8px;flex-wrap:wrap}
+.best-tag{font-size:.72rem;font-weight:700;color:var(--accent-ink);background:var(--accent);border-radius:6px;padding:1px 7px}
+details{border:1px solid var(--line);border-radius:14px;padding:10px 14px}
+summary{cursor:pointer;font-weight:600}
+.hist-wrap{overflow-x:auto}
+.hist{width:100%;border-collapse:collapse;margin-top:10px;font-size:.9rem}
+.hist th{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);text-align:left;font-weight:600;padding:6px 4px;border-bottom:1px solid var(--line)}
+.hist td{padding:7px 4px;border-bottom:1px solid var(--line);white-space:nowrap}
+.hist td.r,.hist th.r{text-align:right}
+.linkbtn{background:none;border:0;color:var(--up);cursor:pointer;font-size:.85rem;padding:2px 4px}
+.notes{white-space:pre-wrap;background:var(--surface-2);border-radius:12px;padding:10px 12px;font-size:.92rem}
+form.fm{display:flex;flex-direction:column;gap:14px}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:.85rem;font-weight:600;color:var(--muted)}
+.field input,.field select,.field textarea{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:10px 12px;min-height:44px;width:100%}
+.field textarea{min-height:80px;resize:vertical}
+.check{display:flex;align-items:center;gap:10px;font-size:.95rem}
+.check input{width:20px;height:20px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.hint{font-size:.8rem;color:var(--muted)}
+.fm-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}
+.err{color:var(--up);font-size:.85rem;min-height:1em;margin:0}
+.login{max-width:420px;margin:12vh auto 0;background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:28px 24px;display:flex;flex-direction:column;gap:16px}
+.login p{margin:0;color:var(--muted)}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:.9rem;z-index:50;max-width:calc(100% - 32px);display:none}
+.toast.show{display:block}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<!-- tela de login -->
+<section class="wrap" id="v-login" hidden>
+  <form class="login" id="fm-login" novalidate>
+    <div class="brand"><div class="logo" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h11l3 3v15H5z"/><path d="M9 9h6M9 13h6M9 17h3"/></svg></div><h1>Caderno de Compras</h1></div>
+    <p id="login-msg">Entre com seu e-mail. Vamos mandar um link de acesso, sem senha.</p>
+    <div class="field"><label for="l-email">E-mail</label><input id="l-email" type="email" autocomplete="email" required></div>
+    <p class="err" id="l-err"></p>
+    <button class="btn primary" type="submit" id="l-btn">Receber link de acesso</button>
+  </form>
+</section>
+
+<!-- app -->
+<div class="wrap" id="v-app" hidden>
+  <header class="top">
+    <div class="brand">
+      <div class="logo" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h11l3 3v15H5z"/><path d="M9 9h6M9 13h6M9 17h3"/></svg></div>
+      <h1>Caderno de Compras</h1>
+    </div>
+    <div class="top-right">
+      <div class="sync" id="sync"><span class="dot"></span><span id="sync-txt">Carregando…</span></div>
+      <button class="btn sm ghost" type="button" id="btn-reload" title="Recarregar dados">↻</button>
+      <button class="btn sm ghost" type="button" id="btn-logout">Sair</button>
+    </div>
+  </header>
+
+  <div class="banner" id="banner" hidden></div>
+
+  <section class="summary" aria-label="Resumo">
+    <div class="tile"><span class="lbl">Falta comprar</span><span class="val num" id="t-falta">R$ 0,00</span><span class="sub" id="t-falta-sub"></span></div>
+    <div class="tile"><span class="lbl">Já comprado</span><span class="val num" id="t-gasto">R$ 0,00</span><span class="sub" id="t-gasto-sub"></span></div>
+    <div class="tile"><span class="lbl">Economia possível</span><span class="val num" id="t-eco">R$ 0,00</span><span class="sub">comprando na loja mais barata</span></div>
+  </section>
+
+  <section class="bar">
+    <div class="bar-head">
+      <h2>Itens</h2>
+      <button class="btn primary" id="btn-new" type="button"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Novo item</button>
+    </div>
+    <div class="filters">
+      <select id="f-status" aria-label="Filtrar por status">
+        <option value="">Todos os status</option><option value="pesquisando">Pesquisando</option><option value="decidido">Decidido</option><option value="comprado">Comprado</option>
+      </select>
+      <select id="f-room" aria-label="Filtrar por cômodo"><option value="">Todos os cômodos</option></select>
+      <input id="f-q" type="search" placeholder="Buscar item ou loja" aria-label="Buscar">
+    </div>
+  </section>
+  <main class="grid" id="grid" aria-live="polite"></main>
+</div>
+
+<dialog id="dlg-item" class="sheet" aria-labelledby="d-name"><div class="dlg" id="d-body"></div></dialog>
+
+<dialog id="dlg-form" class="small" aria-labelledby="fm-title">
+  <form class="fm dlg" id="fm-item" novalidate>
+    <div class="dlg-top"><h2 id="fm-title">Novo item</h2><button class="x" type="button" data-close aria-label="Fechar">✕</button></div>
+    <div class="field"><label for="i-name">Nome do item</label><input id="i-name" required placeholder="Ex.: Jogo de panelas Tramontina"></div>
+    <div class="row2">
+      <div class="field"><label for="i-room">Cômodo</label><input id="i-room" list="rooms" placeholder="Cozinha"></div>
+      <div class="field"><label for="i-qty">Quantidade</label><input id="i-qty" type="number" min="1" step="1" value="1"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label for="i-status">Status</label><select id="i-status"><option value="pesquisando">Pesquisando</option><option value="decidido">Decidido</option><option value="comprado">Comprado</option></select></div>
+      <div class="field"><label for="i-target">Preço-alvo (opcional)</label><input id="i-target" inputmode="decimal" placeholder="0,00"></div>
+    </div>
+    <span class="hint" style="margin-top:-6px">Com preço-alvo, o bot avisa no Telegram quando o menor preço chegar nele.</span>
+    <div class="row2" id="paid-row">
+      <div class="field"><label for="i-paid">Valor pago (unidade)</label><input id="i-paid" inputmode="decimal" placeholder="0,00"></div>
+      <div class="field"><label for="i-paid-store">Onde comprou</label><input id="i-paid-store" list="stores-list"></div>
+    </div>
+    <div class="field"><label for="i-notes">Observações</label><textarea id="i-notes" placeholder="Cor, voltagem, medidas…"></textarea></div>
+    <p class="err" id="i-err"></p>
+    <div class="fm-actions"><button class="btn ghost" type="button" data-close>Cancelar</button><button class="btn primary" type="submit">Salvar</button></div>
+  </form>
+</dialog>
+
+<dialog id="dlg-offer" class="small" aria-labelledby="of-title">
+  <form class="fm dlg" id="fm-offer" novalidate>
+    <div class="dlg-top"><h2 id="of-title">Nova oferta</h2><button class="x" type="button" data-close aria-label="Fechar">✕</button></div>
+    <div class="field"><label for="o-url">Link do produto</label><input id="o-url" type="url" placeholder="Cole aqui o link da página do produto"><span class="hint">O robô usa este link para conferir o preço sozinho.</span></div>
+    <div class="row2">
+      <div class="field"><label for="o-store">Loja</label>
+        <select id="o-store"><option value="amazon">Amazon</option><option value="mercadolivre">Mercado Livre</option><option value="magalu">Magalu</option><option value="casasbahia">Casas Bahia</option><option value="shopee">Shopee</option><option value="outra">Outra loja</option></select></div>
+      <div class="field"><label for="o-frete">Frete para vocês</label><input id="o-frete" inputmode="decimal" placeholder="0,00"></div>
+    </div>
+    <div class="field" id="o-price-wrap"><label for="o-price">Preço que você está vendo (opcional)</label><input id="o-price" inputmode="decimal" placeholder="Deixe vazio para o robô buscar"></div>
+    <label class="check" id="o-active-wrap"><input type="checkbox" id="o-active"> Verificar preço automaticamente</label>
+    <p class="err" id="o-err"></p>
+    <div class="fm-actions"><button class="btn danger" type="button" id="o-del" hidden>Excluir oferta</button><button class="btn ghost" type="button" data-close>Cancelar</button><button class="btn primary" type="submit">Salvar</button></div>
+  </form>
+</dialog>
+
+<dialog id="dlg-price" class="small" aria-labelledby="p-title">
+  <form class="fm dlg" id="fm-price" novalidate>
+    <div class="dlg-top"><h2 id="p-title">Registrar preço</h2><button class="x" type="button" data-close aria-label="Fechar">✕</button></div>
+    <div class="row2">
+      <div class="field"><label for="p-price">Preço</label><input id="p-price" inputmode="decimal" placeholder="0,00"></div>
+      <div class="field"><label for="p-ship">Frete</label><input id="p-ship" inputmode="decimal" placeholder="0,00"></div>
+    </div>
+    <div class="field"><label for="p-date">Data</label><input id="p-date" type="date"><span class="hint">Pode registrar um preço antigo que você viu.</span></div>
+    <p class="err" id="p-err"></p>
+    <div class="fm-actions"><button class="btn ghost" type="button" data-close>Cancelar</button><button class="btn primary" type="submit">Salvar</button></div>
+  </form>
+</dialog>
+
+<dialog id="dlg-confirm" class="small">
+  <div class="dlg">
+    <h2 id="c-title" style="font-size:1.2rem">Excluir?</h2>
+    <p id="c-text" class="meta-line" style="margin:0"></p>
+    <div class="fm-actions"><button class="btn ghost" type="button" id="c-no">Cancelar</button><button class="btn primary" type="button" id="c-yes" style="background:var(--up);color:#fff">Excluir</button></div>
+  </div>
+</dialog>
+
+<datalist id="rooms"><option value="Cozinha"><option value="Sala"><option value="Quarto"><option value="Banheiro"><option value="Lavanderia"><option value="Área externa"><option value="Escritório"></datalist>
+<datalist id="stores-list"><option value="Amazon"><option value="Mercado Livre"><option value="Magalu"><option value="Casas Bahia"><option value="Shopee"></datalist>
+<div class="toast" id="toast" role="status"></div>
+
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+(function(){
+"use strict";
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const BRL = new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"});
+const money = v => v == null || isNaN(v) ? "—" : BRL.format(v);
+const STATUS = {pesquisando:"Pesquisando", decidido:"Decidido", comprado:"Comprado"};
+const STORES = {amazon:"Amazon", mercadolivre:"Mercado Livre", magalu:"Magalu", casasbahia:"Casas Bahia", shopee:"Shopee", outra:"Outra loja"};
+const storeName = s => STORES[s] || s || "Loja";
+const na = n => (n === "Mercado Livre" ? "no " : "na ") + n;
+const localDate = d => { const x = new Date(d); x.setMinutes(x.getMinutes()-x.getTimezoneOffset()); return x.toISOString().slice(0,10); };
+const today = () => localDate(new Date());
+const daysAgo = n => { const d = new Date(); d.setDate(d.getDate()-n); return localDate(d); };
+const fmtDate = s => { if(!s) return ""; const [y,m,d] = s.split("-"); return `${d}/${m}/${y.slice(2)}`; };
+function ago(iso){
+  if (!iso) return "";
+  const min = Math.round((Date.now() - new Date(iso).getTime())/60000);
+  if (min < 2) return "agora há pouco";
+  if (min < 60) return `há ${min} min`;
+  const h = Math.round(min/60); if (h < 24) return `há ${h} h`;
+  const d = Math.round(h/24); return d === 1 ? "ontem" : `há ${d} dias`;
+}
+function parseBRL(s){
+  if (s == null) return null;
+  s = String(s).replace(/R\$|\s/g,""); if (!s) return null;
+  if (s.includes(",")) s = s.replace(/\./g,"").replace(",",".");
+  const v = Number(s); return isFinite(v) && v >= 0 ? Math.round(v*100)/100 : NaN;
+}
+const toInput = v => v == null ? "" : Number(v).toFixed(2).replace(".",",");
+function detectStore(url){
+  let h = ""; try { h = new URL(url).hostname.toLowerCase(); } catch(e){ return "outra"; }
+  if (/amazon\.|amzn\.to$|^a\.co$/.test(h)) return "amazon";
+  if (/mercadolivre|mercadolibre|meli\.la$/.test(h)) return "mercadolivre";
+  if (/magazineluiza|magalu/.test(h)) return "magalu";
+  if (/casasbahia/.test(h)) return "casasbahia";
+  if (/shopee|shp\.ee$/.test(h)) return "shopee";
+  return "outra";
+}
+function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove("show"),4200); }
+const clone = o => JSON.parse(JSON.stringify(o));
+
+/* ---------------- Supabase ---------------- */
+const CFG = window.CADERNO_CONFIG || {};
+if (!CFG.SUPABASE_URL || /SEU-PROJETO/.test(CFG.SUPABASE_URL) || !window.supabase){
+  document.body.innerHTML = `<div class="wrap"><div class="banner">Falta configurar o arquivo <b>docs/config.js</b> com a URL e a chave anon do Supabase (veja o README).</div></div>`;
+  return;
+}
+const sb = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY);
+
+async function fetchAll(table, select, orderCol){
+  let out = [], from = 0;
+  for (;;){
+    const {data, error} = await sb.from(table).select(select).order(orderCol, {ascending:true}).range(from, from+999);
+    if (error) throw error;
+    out = out.concat(data || []);
+    if (!data || data.length < 1000) return out;
+    from += 1000;
+  }
+}
+async function must(p){ const {data, error} = await p; if (error){ toast("Não foi possível salvar: " + error.message); throw error; } return data; }
+
+/* ---------------- estado ---------------- */
+let items = [], lastRun = null, openId = null, chart = null, rawPrices = [];
+
+async function load(){
+  $("#sync").className = "sync"; $("#sync-txt").textContent = "Carregando…";
+  try {
+    const [its, ofs, prs, runs] = await Promise.all([
+      fetchAll("items", "*", "created_at"),
+      fetchAll("offers", "*", "created_at"),
+      fetchAll("prices", "id,offer_id,price,shipping,in_stock,source,captured_at", "captured_at"),
+      sb.from("runs").select("*").not("finished_at","is",null).order("started_at",{ascending:false}).limit(1),
+    ]);
+    rawPrices = prs;
+    lastRun = runs.data && runs.data[0] || null;
+    const byOffer = new Map();
+    for (const p of prs){
+      if (!byOffer.has(p.offer_id)) byOffer.set(p.offer_id, []);
+      byOffer.get(p.offer_id).push(p);
+    }
+    const offersByItem = new Map();
+    for (const o of ofs){
+      // histórico diário: último registro de cada dia
+      const daily = new Map();
+      for (const p of byOffer.get(o.id) || []){
+        daily.set(localDate(p.captured_at), {d: localDate(p.captured_at), p: +p.price, f: p.shipping == null ? null : +p.shipping, stock: p.in_stock});
+      }
+      o.history = Array.from(daily.values()).sort((a,b)=>a.d<b.d?-1:1);
+      o.raw = byOffer.get(o.id) || [];
+      if (!offersByItem.has(o.item_id)) offersByItem.set(o.item_id, []);
+      offersByItem.get(o.item_id).push(o);
+    }
+    items = its.map(i => Object.assign(i, {offers: offersByItem.get(i.id) || []}));
+    const s = $("#sync");
+    if (lastRun){
+      s.className = "sync ok";
+      $("#sync-txt").textContent = `Robô: ${ago(lastRun.finished_at)} · ${lastRun.ok}/${lastRun.checked} preços lidos`;
+    } else { s.className = "sync warn"; $("#sync-txt").textContent = "O robô ainda não rodou"; }
+    const allowed = await sb.rpc("is_allowed");
+    const b = $("#banner");
+    if (allowed.data === false){ b.hidden = false; b.textContent = "Seu e-mail ainda não está liberado. Adicione-o na tabela allowed_users do Supabase (veja o README)."; }
+    else b.hidden = true;
+    render();
+  } catch(e){
+    $("#sync").className = "sync warn"; $("#sync-txt").textContent = "Erro ao carregar";
+    toast("Não consegui carregar os dados: " + (e.message || e));
+  }
+}
+
+/* ---------------- cálculos ---------------- */
+const costOf = (o, h) => h ? h.p + (h.f != null ? h.f : (o.frete != null ? +o.frete : 0)) : null;
+function lastAt(o, date){ let r=null; for (const h of o.history){ if (h.d <= date) r=h; else break; } return r; }
+function bestAt(item, date){
+  let best=null;
+  for (const o of item.offers){ const h = lastAt(o, date); if (!h || h.stock === false) continue; const c = costOf(o,h); if (best==null || c < best.c) best = {c, o, h}; }
+  return best;
+}
+function allDates(item){ const s = new Set(); item.offers.forEach(o => o.history.forEach(h => s.add(h.d))); return Array.from(s).sort(); }
+function analyze(item){
+  const now = bestAt(item, "9999-12-31");
+  const series = allDates(item).map(d => ({d, b: bestAt(item, d)})).filter(x => x.b).map(x => ({d:x.d, c:x.b.c}));
+  let min=null, max=null; series.forEach(s => { if(min==null||s.c<min) min=s.c; if(max==null||s.c>max) max=s.c; });
+  const past = bestAt(item, daysAgo(30));
+  const trend = now && past && past.c > 0 && past.c !== now.c ? (now.c - past.c)/past.c : null;
+  let worst = null; for (const o of item.offers){ const h = lastAt(o,"9999-12-31"); if (h && h.stock !== false){ const c = costOf(o,h); if (worst==null||c>worst) worst=c; } }
+  return {now, min, max, series, trend, worst, isLowest: now && series.length > 1 && now.c <= min};
+}
+
+/* ---------------- lista ---------------- */
+function sparkSVG(series){
+  if (series.length < 2) return "";
+  const W=96,H=28,p=3, vals=series.map(s=>s.c), mn=Math.min(...vals), mx=Math.max(...vals), rng=mx-mn||1;
+  const pts = vals.map((v,i)=>[p+i*(W-2*p)/(vals.length-1), H-p-(v-mn)/rng*(H-2*p)]);
+  const d = pts.map((q,i)=>(i?"L":"M")+q[0].toFixed(1)+" "+q[1].toFixed(1)).join(" "), last = pts[pts.length-1];
+  return `<svg class="spark" viewBox="0 0 ${W} ${H}" aria-hidden="true"><path d="${d} L${last[0].toFixed(1)} ${H} L${p} ${H} Z" fill="var(--accent-soft)" opacity=".7"/><path d="${d}" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linejoin="round"/><circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="2.6" fill="var(--accent)"/></svg>`;
+}
+function trendHTML(a){
+  if (a.trend != null){ const pct = Math.abs(a.trend*100).toFixed(0);
+    return a.trend < 0 ? `<span class="trend down">↓ ${pct}% em 30 dias</span>` : `<span class="trend up">↑ ${pct}% em 30 dias</span>`; }
+  if (a.isLowest) return `<span class="trend down">Menor preço registrado</span>`;
+  if (a.series.length > 1) return `<span class="trend flat">Estável</span>`;
+  return "";
+}
+function render(){ renderList(); if (openId) renderDetail(); }
+function renderList(){
+  const rooms = Array.from(new Set(items.map(i => (i.room||"").trim()).filter(Boolean))).sort((a,b)=>a.localeCompare(b,"pt-BR"));
+  const fr = $("#f-room"), cur = fr.value;
+  fr.innerHTML = `<option value="">Todos os cômodos</option>` + rooms.map(r=>`<option${r===cur?" selected":""}>${esc(r)}</option>`).join("");
+
+  let falta=0, faltaN=0, gasto=0, gastoN=0, eco=0;
+  for (const it of items){
+    const q = Math.max(1, +it.qty||1), a = analyze(it);
+    if (it.status === "comprado"){ gastoN++; gasto += (it.paid != null ? +it.paid : (a.now ? a.now.c : 0))*q; }
+    else if (a.now){ falta += a.now.c*q; faltaN++; if (a.worst!=null) eco += (a.worst-a.now.c)*q; }
+  }
+  const pend = items.filter(i=>i.status!=="comprado").length;
+  $("#t-falta").textContent = money(falta);
+  $("#t-falta-sub").textContent = pend ? `${pend} ${pend===1?"item":"itens"} na lista` + (faltaN<pend ? `, ${pend-faltaN} sem preço` : "") : "nada pendente";
+  $("#t-gasto").textContent = money(gasto);
+  $("#t-gasto-sub").textContent = `${gastoN} ${gastoN===1?"item":"itens"}`;
+  $("#t-eco").textContent = money(eco);
+
+  const fs = $("#f-status").value, fRoom = fr.value, q = $("#f-q").value.trim().toLowerCase();
+  const order = {pesquisando:0, decidido:1, comprado:2};
+  const list = items.filter(it => (!fs || it.status===fs) && (!fRoom || (it.room||"").trim()===fRoom) &&
+      (!q || (it.name||"").toLowerCase().includes(q) || it.offers.some(o => storeName(o.store).toLowerCase().includes(q))))
+    .sort((a,b) => (order[a.status]??0)-(order[b.status]??0) || (a.name||"").localeCompare(b.name||"","pt-BR"));
+  const g = $("#grid");
+  if (!items.length){ g.innerHTML = `<div class="empty"><strong>Sua lista está vazia.</strong><br>Toque em “Novo item” e depois cole os links das lojas onde ele está à venda.</div>`; return; }
+  if (!list.length){ g.innerHTML = `<div class="empty">Nenhum item com esses filtros.</div>`; return; }
+  g.innerHTML = list.map(it => {
+    const a = analyze(it), n = it.offers.length, qty = Math.max(1,+it.qty||1), bought = it.status === "comprado";
+    const priceVal = bought && it.paid != null ? +it.paid : (a.now ? a.now.c : null);
+    const store = bought && it.paid_store ? it.paid_store : (a.now ? storeName(a.now.o.store) : "");
+    const errs = it.offers.filter(o => o.active && o.last_error).length;
+    return `<button class="card${bought?" bought":""}" type="button" data-open="${esc(it.id)}">
+      <div class="card-head"><div><h3>${esc(it.name)}</h3>
+        <div class="card-meta">${esc(it.room||"Sem cômodo")}${qty>1?` · ${qty} unidades`:""}${it.target_price!=null&&!bought?` · alvo ${money(+it.target_price)}`:""}</div></div>
+        <span class="pill st-${esc(it.status)}">${STATUS[it.status]||"Pesquisando"}</span></div>
+      <hr>
+      <div class="card-foot"><div><div class="price-lbl">${bought?"Pago":"Menor custo"}</div>
+        <div class="price num">${priceVal!=null?money(priceVal):"Sem preço ainda"}</div>
+        <div class="price-store">${store?esc(na(store)):"&nbsp;"}</div></div>
+        <span class="offers-link">${n} ${n===1?"oferta":"ofertas"} ›${errs&&!bought?`<span class="warn-txt">${errs} com erro</span>`:""}</span></div>
+      ${!bought && a.series.length>1 ? `<div class="card-trend">${trendHTML(a)}${sparkSVG(a.series)}</div>` : ""}
+    </button>`;
+  }).join("");
+}
+
+/* ---------------- detalhe ---------------- */
+const seriesColors = () => { const cs = getComputedStyle(document.documentElement); return ["--s1","--s2","--s3","--s4","--s5"].map(v=>cs.getPropertyValue(v).trim()); };
+function openDetail(id){ openId = id; renderDetail(); const d=$("#dlg-item"); if(!d.open) d.showModal(); }
+function closeDetail(){ openId=null; if(chart){chart.destroy();chart=null;} const d=$("#dlg-item"); if(d.open) d.close(); }
+$("#dlg-item").addEventListener("close", ()=>{ openId=null; if(chart){chart.destroy();chart=null;} });
+
+function renderDetail(){
+  const it = items.find(x => x.id === openId);
+  if (!it){ closeDetail(); return; }
+  const a = analyze(it), cols = seriesColors();
+  const colorOf = o => cols[it.offers.indexOf(o) % cols.length];
+  const offers = it.offers.map(o => ({o, h:lastAt(o,"9999-12-31")})).sort((x,y)=>(x.h&&x.h.stock!==false?costOf(x.o,x.h):1e12)-(y.h&&y.h.stock!==false?costOf(y.o,y.h):1e12));
+  const bestId = a.now ? a.now.o.id : null;
+  const hist = []; it.offers.forEach(o => o.raw.forEach(p => hist.push({o,p})));
+  hist.sort((x,y)=> x.p.captured_at < y.p.captured_at ? 1 : -1);
+  const tr = a.trend!=null ? `${a.trend<0?"↓":"↑"} ${Math.abs(a.trend*100).toFixed(0)}%` : "—";
+  const qty = Math.max(1,+it.qty||1);
+
+  $("#d-body").innerHTML = `
+    <div class="dlg-top"><button class="x" type="button" data-act="close" aria-label="Voltar">‹</button>
+      <h2 id="d-name" style="flex:1">${esc(it.name)}</h2>
+      <button class="btn sm ghost" type="button" data-act="edit">Editar</button></div>
+    <div class="seg" role="group" aria-label="Status">${Object.keys(STATUS).map(s=>`<button type="button" data-status="${s}" aria-pressed="${it.status===s}">${STATUS[s]}</button>`).join("")}</div>
+    <div class="meta-line">${esc(it.room||"Sem cômodo")} · ${qty} ${qty>1?"unidades":"unidade"}${it.target_price!=null?` · preço-alvo ${money(+it.target_price)}`:""}${it.status==="comprado"&&it.paid!=null?` · pago ${money(+it.paid)}${it.paid_store?" "+esc(na(it.paid_store)):""}`:""}</div>
+    ${it.notes?`<div class="notes">${esc(it.notes)}</div>`:""}
+    <div class="stats">
+      <div class="stat"><div class="lbl">Menor agora</div><div class="val num">${a.now?money(a.now.c):"—"}</div></div>
+      <div class="stat"><div class="lbl">Menor já visto</div><div class="val num">${money(a.min)}</div></div>
+      <div class="stat"><div class="lbl">Maior já visto</div><div class="val num">${money(a.max)}</div></div>
+      <div class="stat"><div class="lbl">Últimos 30 dias</div><div class="val num" style="color:${a.trend==null?"inherit":a.trend<0?"var(--down)":"var(--up)"}">${tr}</div></div>
+    </div>
+    ${a.series.length ? `<div class="chart-box"><canvas id="d-chart" aria-label="Histórico de preços por loja"></canvas></div>` : ""}
+    <div class="section-head"><h3>Ofertas</h3><button class="btn sm primary" type="button" data-act="add-offer">+ Adicionar link de loja</button></div>
+    ${offers.length ? offers.map(({o,h})=>{
+      const c = h ? costOf(o,h) : null, fr = h ? (h.f != null ? h.f : (o.frete != null ? +o.frete : 0)) : 0;
+      let status = "";
+      if (!o.active) status = "Verificação automática pausada";
+      else if (!o.url) status = "Sem link: só preço manual";
+      else if (o.last_checked_at && !o.last_error) status = `Robô conferiu ${ago(o.last_checked_at)}`;
+      else if (!o.last_checked_at) status = "Aguardando a primeira verificação do robô";
+      return `<div class="offer${o.id===bestId?" best":""}${!o.active?" paused":""}">
+        <div class="offer-row"><span class="offer-store"><span class="swatch" style="background:${colorOf(o)}"></span>${esc(storeName(o.store))}${o.id===bestId&&offers.length>1?'<span class="best-tag">Melhor</span>':""}</span>
+          <span class="offer-price num">${h ? (h.stock===false ? "Sem estoque" : money(c)) : "Sem preço"}</span></div>
+        ${o.title?`<div class="offer-title">${esc(o.title)}</div>`:""}
+        <div class="offer-row offer-sub"><span>${h&&h.stock!==false?`${money(h.p)}${fr?` + frete ${money(fr)}`:" · sem frete"}`:""}</span><span>${status}</span></div>
+        ${o.active && o.last_error ? `<div class="offer-err">⚠ Não consegui ler o preço: ${esc(o.last_error)}. Você pode registrar manualmente.</div>` : ""}
+        <div class="offer-actions">
+          <button class="btn sm" type="button" data-price="${esc(o.id)}">Registrar preço</button>
+          <button class="btn sm ghost" type="button" data-edit-offer="${esc(o.id)}">Editar</button>
+          ${o.url?`<a class="btn sm ghost" href="${esc(o.url)}" target="_blank" rel="noopener">Abrir na loja ↗</a>`:""}
+        </div></div>`;
+    }).join("") : `<div class="empty" style="padding:20px">Nenhuma loja ainda. Cole o link do produto e o robô começa a acompanhar o preço.</div>`}
+    ${hist.length ? `<details><summary>Todos os registros de preço (${hist.length})</summary><div class="hist-wrap">
+      <table class="hist"><thead><tr><th>Data</th><th>Loja</th><th class="r">Preço</th><th>Origem</th><th></th></tr></thead><tbody>
+      ${hist.map(({o,p})=>`<tr><td class="num">${fmtDate(localDate(p.captured_at))}</td><td>${esc(storeName(o.store))}</td>
+        <td class="r num">${p.in_stock?money(+p.price):"sem estoque"}${p.shipping?` + ${money(+p.shipping)}`:""}</td><td>${p.source==="auto"?"robô":"manual"}</td>
+        <td class="r"><button class="linkbtn" type="button" data-del-price="${esc(p.id)}">apagar</button></td></tr>`).join("")}
+      </tbody></table></div></details>` : ""}
+    <div><button class="btn danger" type="button" data-act="delete">Excluir item</button></div>`;
+
+  if (chart){ chart.destroy(); chart = null; }
+  const cv = $("#d-chart");
+  if (cv && window.Chart){
+    const dates = allDates(it), cs = getComputedStyle(document.documentElement);
+    const muted = cs.getPropertyValue("--muted").trim(), line = cs.getPropertyValue("--line").trim();
+    const datasets = it.offers.filter(o=>o.history.length).map(o=>{
+      const c = colorOf(o), map = new Map(o.history.filter(h=>h.stock!==false).map(h=>[h.d,costOf(o,h)]));
+      return {label:storeName(o.store), data:dates.map(d=>map.has(d)?map.get(d):null), borderColor:c, backgroundColor:c, spanGaps:true, stepped:"before", pointRadius:3, pointHoverRadius:5, borderWidth:2};
+    });
+    chart = new Chart(cv, {type:"line", data:{labels:dates.map(fmtDate), datasets},
+      options:{responsive:true, maintainAspectRatio:false, animation:false, interaction:{mode:"index",intersect:false},
+        plugins:{legend:{labels:{color:muted, boxWidth:10, boxHeight:10, usePointStyle:true}}, tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${money(c.parsed.y)}`}}},
+        scales:{x:{ticks:{color:muted, maxRotation:0, autoSkip:true}, grid:{display:false}}, y:{ticks:{color:muted, callback:v=>money(v).replace(",00","")}, grid:{color:line}}}}});
+  }
+}
+
+$("#d-body").addEventListener("click", async e => {
+  const it = items.find(x => x.id === openId); if (!it) return;
+  const t = e.target.closest("button"); if (!t) return;
+  const act = t.dataset.act;
+  if (act === "close") return closeDetail();
+  if (act === "edit") return openItemForm(it);
+  if (act === "add-offer") return openOfferForm(it, null);
+  if (act === "delete") return confirmBox("Excluir item?", `“${it.name}”, as ofertas e todo o histórico de preços dele serão apagados.`, async () => {
+    closeDetail(); await must(sb.from("items").delete().eq("id", it.id)); load(); });
+  if (t.dataset.status){
+    const s = t.dataset.status; if (s === it.status) return;
+    const upd = {status: s};
+    if (s === "comprado" && it.paid == null){ const a = analyze(it); if (a.now){ upd.paid = a.now.c; upd.paid_store = storeName(a.now.o.store); } }
+    await must(sb.from("items").update(upd).eq("id", it.id)); return load();
+  }
+  if (t.dataset.price) return openPriceForm(it, t.dataset.price);
+  if (t.dataset.editOffer) return openOfferForm(it, t.dataset.editOffer);
+  if (t.dataset.delPrice){ await must(sb.from("prices").delete().eq("id", t.dataset.delPrice)); return load(); }
+});
+
+/* ---------------- formulários ---------------- */
+let formItemId = null;
+function openItemForm(it){
+  formItemId = it ? it.id : null;
+  $("#fm-title").textContent = it ? "Editar item" : "Novo item";
+  $("#i-name").value = it ? it.name||"" : "";
+  $("#i-room").value = it ? it.room||"" : "";
+  $("#i-qty").value = it ? (it.qty||1) : 1;
+  $("#i-status").value = it ? it.status : "pesquisando";
+  $("#i-target").value = it && it.target_price!=null ? toInput(+it.target_price) : "";
+  $("#i-paid").value = it && it.paid!=null ? toInput(+it.paid) : "";
+  $("#i-paid-store").value = it ? it.paid_store||"" : "";
+  $("#i-notes").value = it ? it.notes||"" : "";
+  $("#i-err").textContent = ""; togglePaid();
+  $("#dlg-form").showModal(); $("#i-name").focus();
+}
+function togglePaid(){ $("#paid-row").hidden = $("#i-status").value !== "comprado"; }
+$("#i-status").addEventListener("change", togglePaid);
+$("#btn-new").addEventListener("click", () => openItemForm(null));
+$("#fm-item").addEventListener("submit", async e => {
+  e.preventDefault();
+  const name = $("#i-name").value.trim();
+  if (!name){ $("#i-err").textContent = "Dê um nome ao item."; return; }
+  const target = parseBRL($("#i-target").value), paid = parseBRL($("#i-paid").value);
+  if (Number.isNaN(target) || Number.isNaN(paid)){ $("#i-err").textContent = "Use números, por exemplo 440,91."; return; }
+  const row = {name, room:$("#i-room").value.trim()||null, qty:Math.max(1, parseInt($("#i-qty").value,10)||1),
+    status:$("#i-status").value, notes:$("#i-notes").value.trim()||null, target_price:target};
+  const old = formItemId ? items.find(x=>x.id===formItemId) : null;
+  if (old && target !== (old.target_price!=null ? +old.target_price : null)) row.last_alert_price = null;
+  if (row.status === "comprado"){ row.paid = paid; row.paid_store = $("#i-paid-store").value.trim()||null; }
+  let id = formItemId;
+  if (id) await must(sb.from("items").update(row).eq("id", id));
+  else id = (await must(sb.from("items").insert(row).select("id").single())).id;
+  $("#dlg-form").close();
+  await load();
+  if (!formItemId) openDetail(id);
+});
+
+let offerCtx = null;
+function openOfferForm(it, offerId){
+  const o = offerId ? it.offers.find(x=>x.id===offerId) : null;
+  offerCtx = {itemId: it.id, offerId};
+  $("#of-title").textContent = o ? `Editar oferta · ${storeName(o.store)}` : "Adicionar link de loja";
+  $("#o-url").value = o ? o.url||"" : "";
+  $("#o-store").value = o ? o.store : "amazon";
+  $("#o-frete").value = o && o.frete!=null ? toInput(+o.frete) : "";
+  $("#o-price").value = "";
+  $("#o-price-wrap").hidden = !!o;
+  $("#o-active").checked = o ? !!o.active : true;
+  $("#o-del").hidden = !o;
+  $("#o-err").textContent = "";
+  $("#dlg-offer").showModal(); $("#o-url").focus();
+}
+$("#o-url").addEventListener("input", () => { const u = $("#o-url").value.trim(); if (/^https?:\/\//i.test(u)) $("#o-store").value = detectStore(u); });
+$("#fm-offer").addEventListener("submit", async e => {
+  e.preventDefault();
+  const err = m => { $("#o-err").textContent = m; };
+  let url = $("#o-url").value.trim();
+  if (url && !/^https?:\/\//i.test(url)) url = "https://" + url;
+  const frete = parseBRL($("#o-frete").value), price = parseBRL($("#o-price").value);
+  if (Number.isNaN(frete) || Number.isNaN(price)) return err("Use números, por exemplo 1.299,90.");
+  if (!url && price == null && !offerCtx.offerId) return err("Cole o link do produto ou informe um preço.");
+  const row = {store:$("#o-store").value, url:url||null, frete, active:$("#o-active").checked && !!url};
+  if (offerCtx.offerId){
+    const old = items.find(x=>x.id===offerCtx.itemId).offers.find(x=>x.id===offerCtx.offerId);
+    if (old && old.url !== row.url){ row.fail_count = 0; row.last_error = null; row.title = null; }
+    await must(sb.from("offers").update(row).eq("id", offerCtx.offerId));
+  } else {
+    const created = await must(sb.from("offers").insert(Object.assign({item_id: offerCtx.itemId}, row)).select("id").single());
+    if (price != null) await must(sb.from("prices").insert({offer_id: created.id, price, source:"manual"}));
+    if (row.store === "shopee") toast("Dica: a Shopee só é lida automaticamente com a API de afiliados configurada (veja o README).");
+  }
+  $("#dlg-offer").close(); load();
+});
+$("#o-del").addEventListener("click", () => {
+  const ctx = offerCtx; $("#dlg-offer").close();
+  confirmBox("Excluir oferta?", "Esta loja e todo o histórico de preços dela serão apagados.", async () => {
+    await must(sb.from("offers").delete().eq("id", ctx.offerId)); load(); });
+});
+
+let priceCtx = null;
+function openPriceForm(it, offerId){
+  const o = it.offers.find(x=>x.id===offerId); priceCtx = {offerId};
+  const h = lastAt(o, "9999-12-31");
+  $("#p-title").textContent = `Registrar preço · ${storeName(o.store)}`;
+  $("#p-price").value = h ? toInput(h.p) : "";
+  $("#p-ship").value = o.frete != null ? toInput(+o.frete) : "";
+  $("#p-date").value = today(); $("#p-err").textContent = "";
+  $("#dlg-price").showModal(); $("#p-price").focus();
+}
+$("#fm-price").addEventListener("submit", async e => {
+  e.preventDefault();
+  const p = parseBRL($("#p-price").value), f = parseBRL($("#p-ship").value);
+  if (p == null) { $("#p-err").textContent = "Informe o preço."; return; }
+  if (Number.isNaN(p) || Number.isNaN(f)) { $("#p-err").textContent = "Use números, por exemplo 1.299,90."; return; }
+  const d = $("#p-date").value || today();
+  const when = d === today() ? new Date().toISOString() : new Date(d + "T12:00:00").toISOString();
+  await must(sb.from("prices").insert({offer_id: priceCtx.offerId, price: p, shipping: f, source:"manual", captured_at: when}));
+  $("#dlg-price").close(); load();
+});
+
+function confirmBox(title, text, onYes){
+  $("#c-title").textContent = title; $("#c-text").textContent = text;
+  const d = $("#dlg-confirm");
+  $("#c-yes").onclick = () => { d.close(); onYes(); };
+  $("#c-no").onclick = () => d.close();
+  d.showModal();
+}
+document.querySelectorAll("[data-close]").forEach(b => b.addEventListener("click", () => b.closest("dialog").close()));
+$("#grid").addEventListener("click", e => { const c = e.target.closest("[data-open]"); if (c) openDetail(c.dataset.open); });
+["#f-status","#f-room"].forEach(s => $(s).addEventListener("change", renderList));
+$("#f-q").addEventListener("input", renderList);
+$("#btn-reload").addEventListener("click", load);
+$("#btn-logout").addEventListener("click", async () => { await sb.auth.signOut(); showLogin(); });
+
+/* ---------------- login ---------------- */
+function showLogin(){ $("#v-app").hidden = true; $("#v-login").hidden = false; }
+function showApp(){ $("#v-login").hidden = true; $("#v-app").hidden = false; load(); }
+$("#fm-login").addEventListener("submit", async e => {
+  e.preventDefault();
+  const email = $("#l-email").value.trim();
+  if (!/^\S+@\S+\.\S+$/.test(email)){ $("#l-err").textContent = "Digite um e-mail válido."; return; }
+  $("#l-btn").disabled = true; $("#l-err").textContent = "";
+  const {error} = await sb.auth.signInWithOtp({email, options:{emailRedirectTo: location.origin + location.pathname}});
+  $("#l-btn").disabled = false;
+  if (error){ $("#l-err").textContent = "Não foi possível enviar: " + error.message; return; }
+  $("#login-msg").textContent = `Pronto! Abra o e-mail enviado para ${email} e toque no link. Pode fechar esta aba.`;
+});
+let started = false;
+sb.auth.onAuthStateChange((_ev, session) => {
+  if (session && !started){ started = true; showApp(); }
+  if (!session){ started = false; showLogin(); }
+});
+})();
+</script>
+</body>
+</html>
