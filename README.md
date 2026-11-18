@@ -1,4 +1,4 @@
-# Caderno de Compras 🏠
+# Caderno de Compras 
 
 Lista de compras da casa com **monitoramento automático de preços** em Amazon, Mercado Livre, Magalu, Casas Bahia e Shopee, **histórico em gráfico** e **alertas no Telegram**.
 
@@ -15,10 +15,10 @@ Lista de compras da casa com **monitoramento automático de preços** em Amazon,
 - **Site**: vocês cadastram os itens e colam o link do produto em cada loja.
 - **Coletor**: 4 vezes por dia (6h, 12h, 18h e 21h) abre cada link, lê o preço e grava no banco.
 - **Bot**: manda mensagem quando:
-  - 📉 o preço cai 3% ou mais numa loja;
-  - 🎯 o menor preço chega no **preço-alvo** que você definiu;
-  - 🏆 é o menor preço desde que começaram a acompanhar (depois de 7 dias de histórico);
-  - ⚠️ uma loja falha 3 vezes seguidas (aí você pode registrar o preço na mão).
+  -  o preço cai 3% ou mais numa loja;
+  -  o menor preço chega no **preço-alvo** que você definiu;
+  -  é o menor preço desde que começaram a acompanhar (depois de 7 dias de histórico);
+  -  uma loja falha 3 vezes seguidas (aí você pode registrar o preço na mão).
 
 Tudo roda **de graça**. Leva uns 30–40 minutos para colocar no ar na primeira vez.
 
