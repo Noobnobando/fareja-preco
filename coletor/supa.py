@@ -54,3 +54,10 @@ class Supabase:
     def update(self, table: str, match: dict, values: dict) -> None:
         params = {k: f"eq.{v}" for k, v in match.items()}
         self._req("PATCH", table, params, body=values, prefer="return=minimal")
+
+    def upsert(self, table: str, rows: dict | list[dict]) -> None:
+        self._req("POST", table, body=rows, prefer="resolution=merge-duplicates,return=minimal")
+
+    def delete(self, table: str, match: dict) -> None:
+        params = {k: f"eq.{v}" for k, v in match.items()}
+        self._req("DELETE", table, params, prefer="return=minimal")

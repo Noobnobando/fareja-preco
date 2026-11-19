@@ -46,7 +46,7 @@ def test_execucao_completa(monkeypatch):
     monkeypatch.setattr(m, "pausa", lambda *a: None)
     monkeypatch.setattr(m.telegram, "enviar", lambda txt, url=None: enviados.append((txt, url)) or True)
 
-    def fake_ler(url, loja, nav):
+    def fake_ler(url, loja, nav, ml=None):
         if loja == "casasbahia":
             raise ErroColeta("a loja bloqueou o robô")
         return Leitura(price=440.91, title="Jogo de Panelas")

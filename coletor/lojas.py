@@ -216,10 +216,18 @@ LEITORES = {
 }
 
 
-def ler_preco(url: str, loja: str | None, nav: Navegador) -> Leitura:
+def ler_preco(url: str, loja: str | None, nav: Navegador, ml=None) -> Leitura:
     loja = loja or detectar_loja(url)
     if loja == "shopee":
         return ler_shopee(url, nav)
+    if loja == "mercadolivre" and ml is not None and ml.access:
+        # API oficial (o site do ML bloqueia robôs em servidores)
+        return ml.ler(url, resolver=lambda u: nav.get(u).url)
+    if loja == "mercadolivre" and ml is not None:
+        try:
+            return ler_preco(url, loja, nav, None)
+        except ErroColeta as e:
+            raise ErroColeta(f"{e}. API do Mercado Livre: {ml.erro or 'não conectada'}") from e
     alvo = url_amazon(url) if loja == "amazon" else url
     resp = nav.get(alvo)
     if loja == "amazon" and resp.url != alvo:

@@ -46,6 +46,9 @@ h1,h2,h3{font-family:var(--font-display);text-wrap:balance;margin:0;letter-spaci
 .sync{font-size:.8rem;color:var(--muted);display:flex;align-items:center;gap:6px}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
 .sync.ok .dot{background:var(--accent)} .sync.warn .dot{background:var(--warn)}
+.mlbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 14px;font-size:.9rem}
+.mlbar.ok{background:transparent;border-style:dashed;color:var(--muted);padding:6px 14px}
+.mlbar.good{background:var(--accent-soft);border-color:transparent;color:var(--accent)}
 .banner{background:var(--warn-soft);color:var(--warn);border-radius:12px;padding:10px 14px;font-size:.9rem}
 .summary{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
 .tile{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;display:flex;flex-direction:column;gap:2px}
@@ -179,6 +182,7 @@ form.fm{display:flex;flex-direction:column;gap:14px}
   </header>
 
   <div class="banner" id="banner" hidden></div>
+  <div class="mlbar" id="mlbar" hidden></div>
 
   <section class="summary" aria-label="Resumo">
     <div class="tile"><span class="lbl">Falta comprar</span><span class="val num" id="t-falta">R$ 0,00</span><span class="sub" id="t-falta-sub"></span></div>
@@ -319,6 +323,12 @@ if (!CFG.SUPABASE_URL || /SEU-PROJETO/.test(CFG.SUPABASE_URL) || !window.supabas
   document.body.innerHTML = `<div class="wrap"><div class="banner">Falta configurar o arquivo <b>docs/config.js</b> com a URL e a chave anon do Supabase (veja o README).</div></div>`;
   return;
 }
+// Retorno da autorização do Mercado Livre: ?code=TG-...
+const qs = new URLSearchParams(location.search);
+let mlCode = /^TG-/.test(qs.get("code") || "") ? qs.get("code") : null;
+const mlErro = qs.get("error") && !qs.get("code") ? (qs.get("error_description") || qs.get("error")) : null;
+if (mlCode || mlErro) history.replaceState(null, "", location.pathname + location.hash);
+const ML_REDIRECT = location.origin + location.pathname;
 const sb = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY);
 
 async function fetchAll(table, select, orderCol){
@@ -374,11 +384,39 @@ async function load(){
     const b = $("#banner");
     if (allowed.data === false){ b.hidden = false; b.textContent = "Seu e-mail ainda não está liberado. Adicione-o na tabela allowed_users do Supabase (veja o README)."; }
     else b.hidden = true;
+    await mlUpdate();
     render();
   } catch(e){
     $("#sync").className = "sync warn"; $("#sync-txt").textContent = "Erro ao carregar";
     toast("Não consegui carregar os dados: " + (e.message || e));
   }
+}
+
+/* ---------------- Mercado Livre ---------------- */
+async function mlUpdate(){
+  const bar = $("#mlbar");
+  if (!CFG.ML_CLIENT_ID){ bar.hidden = true; return; }
+  let msg = null, cls = "";
+  if (mlCode){
+    const {error} = await sb.from("app_settings").upsert({key:"ml_pending_code", value: JSON.stringify({code: mlCode, redirect_uri: ML_REDIRECT}), updated_at: new Date().toISOString()});
+    mlCode = null;
+    if (error) msg = `Não consegui salvar a autorização do Mercado Livre (${esc(error.message)}). Rodou o arquivo mercadolivre.sql no Supabase?`;
+    else { bar.className = "mlbar good"; bar.hidden = false;
+      bar.innerHTML = `<span><b>Mercado Livre autorizado!</b> Agora, nos próximos minutos, vá no GitHub em <b>Actions → Coletor de preços → Run workflow</b> para o robô concluir a conexão.</span>`;
+      return; }
+  }
+  const {data} = await sb.from("app_settings").select("key,value");
+  const map = {}; (data||[]).forEach(r => map[r.key] = r.value);
+  let st = null; try { st = JSON.parse(map.ml_status || "null"); } catch(e){}
+  const authUrl = "https://auth.mercadolivre.com.br/authorization?response_type=code&client_id=" + encodeURIComponent(CFG.ML_CLIENT_ID) + "&redirect_uri=" + encodeURIComponent(ML_REDIRECT);
+  const btn = `<a class="btn sm primary" href="${esc(authUrl)}">Conectar Mercado Livre</a>`;
+  if (mlErro) msg = `O Mercado Livre não autorizou: ${esc(mlErro)}.`;
+  if (msg){ cls = ""; bar.innerHTML = `<span>${msg}</span>${btn}`; }
+  else if (map.ml_pending_code){ cls = "good"; bar.innerHTML = `<span>Mercado Livre autorizado. Falta rodar o robô (Actions → Coletor de preços → Run workflow) para concluir.</span>`; }
+  else if (st && st.ok){ cls = "ok"; bar.innerHTML = `<span>Mercado Livre conectado pela API oficial ✓</span>`; }
+  else if (st && !st.ok){ cls = ""; bar.innerHTML = `<span>⚠ Mercado Livre: ${esc(st.msg)}</span>${btn}`; }
+  else { cls = ""; bar.innerHTML = `<span>Conecte sua conta do Mercado Livre para o robô conseguir ler os preços de lá.</span>${btn}`; }
+  bar.className = "mlbar " + cls; bar.hidden = false;
 }
 
 /* ---------------- cálculos ---------------- */

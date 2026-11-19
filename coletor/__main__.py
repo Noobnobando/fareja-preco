@@ -17,6 +17,7 @@ from datetime import datetime, timedelta, timezone
 from .alertas import Novo, Registro, avaliar_item, brl, mensagem_falha
 from .http import Navegador, pausa
 from .lojas import LOJAS, detectar_loja, ler_preco
+from .mercadolivre import MercadoLivre
 from .parse import ErroColeta
 from .supa import Supabase
 from . import telegram
@@ -79,6 +80,16 @@ def rodar() -> int:
     print(f"{len(itens)} itens pendentes, {len(a_verificar)} ofertas para verificar")
 
     nav = Navegador()
+    ml = None
+    if env("ML_CLIENT_ID", False) and env("ML_CLIENT_SECRET", False):
+        ml = MercadoLivre(sb, env("ML_CLIENT_ID"), env("ML_CLIENT_SECRET"), avisar=telegram.enviar)
+        try:
+            ok_ml = ml.preparar()
+        except Exception as e:  # noqa: BLE001
+            ok_ml = False
+            ml.erro = f"erro ao conectar ({type(e).__name__})"
+            traceback.print_exc()
+        print("Mercado Livre (API):", "conectado" if ok_ml else ml.erro)
     novos: dict[str, Novo] = {}
     ok = falhas = 0
     for n, o in enumerate(a_verificar):
@@ -88,7 +99,7 @@ def rodar() -> int:
         loja = o.get("store") or detectar_loja(o["url"])
         rotulo = f"{item['name'][:40]:<40} {LOJAS.get(loja, loja):<14}"
         try:
-            r = ler_preco(o["url"], loja, nav)
+            r = ler_preco(o["url"], loja, nav, ml)
         except Exception as e:  # noqa: BLE001
             falhas += 1
             erro = str(e) if isinstance(e, ErroColeta) else f"erro inesperado ({type(e).__name__})"
